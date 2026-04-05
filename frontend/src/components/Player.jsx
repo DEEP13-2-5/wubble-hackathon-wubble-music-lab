@@ -3,7 +3,7 @@ import { useStore, A } from '../lib/store.jsx';
 import { fmtTime, clamp, toPlayableAudioUrl } from '../lib/utils.js';
 
 export default function Player() {
-  const { state, dispatch } = useStore();
+  const { state, dispatch, toast } = useStore();
   const { playlist, currentIndex, isPlaying, volume, isShuffle } = state;
   const audioRef = useRef(null);
   const seekRef = useRef(null);
@@ -17,21 +17,28 @@ export default function Player() {
     if (!audio) return;
     if (!current) { audio.pause(); audio.src = ''; return; }
     const playableUrl = toPlayableAudioUrl(current.audioUrl);
+    audio.preload = 'metadata';
     if (audio.src !== playableUrl) {
       audio.src = playableUrl;
       audio.load();
     }
-    if (isPlaying) audio.play().catch(() => {});
+    if (isPlaying) audio.play().catch((error) => {
+      toast(error?.message || 'Audio playback failed', 'error');
+      dispatch({ type: A.SET_IS_PLAYING, payload: false });
+    });
     else audio.pause();
-  }, [current, currentIndex]);
+  }, [current, currentIndex, isPlaying, dispatch, toast]);
 
   // ── play/pause changes ─────────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !current) return;
-    if (isPlaying) audio.play().catch(() => {});
+    if (isPlaying) audio.play().catch((error) => {
+      toast(error?.message || 'Audio playback failed', 'error');
+      dispatch({ type: A.SET_IS_PLAYING, payload: false });
+    });
     else audio.pause();
-  }, [isPlaying]);
+  }, [isPlaying, current, dispatch, toast]);
 
   // ── volume ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -53,6 +60,16 @@ export default function Player() {
       document.getElementById('player-duration').textContent = fmtTime(audio.duration);
     };
     const onError = () => {
+      const code = audio.error?.code;
+      const message = code === 4
+        ? 'Audio file could not be loaded. The generated audio URL is not reachable.'
+        : code === 2
+          ? 'Network error while loading audio.'
+          : code === 3
+            ? 'Audio decoding failed.'
+            : 'Audio playback failed.';
+      toast(message, 'error');
+      dispatch({ type: A.SET_IS_PLAYING, payload: false });
       document.getElementById('player-duration').textContent = '0:00';
       document.getElementById('player-current').textContent = '0:00';
     };
