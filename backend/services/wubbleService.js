@@ -246,6 +246,35 @@ function getWubbleConfig() {
   };
 }
 
+function buildPollUrlCandidates(config, { requestId, projectId } = {}) {
+  const safeRequestId = encodeURIComponent(String(requestId || ""));
+  const safeProjectId = encodeURIComponent(String(projectId || ""));
+  const template = String(config.pollEndpointTemplate || "/api/v1/polling/{requestId}").trim();
+  const normalizedTemplate = template.includes("{requestId}") ? template : "/api/v1/polling/{requestId}";
+
+  const candidates = [];
+  const pushCandidate = (endpoint) => {
+    const url = normalizeEndpoint(config.baseUrl, endpoint);
+    if (url && !candidates.includes(url)) {
+      candidates.push(url);
+    }
+  };
+
+  if (safeRequestId) {
+    pushCandidate(normalizedTemplate.replace("{requestId}", safeRequestId));
+    pushCandidate(`/api/v1/polling?requestId=${safeRequestId}`);
+    pushCandidate(`/api/v1/polling/${safeRequestId}/status`);
+  }
+
+  if (safeProjectId) {
+    pushCandidate(normalizedTemplate.replace("{requestId}", safeProjectId));
+    pushCandidate(`/api/v1/polling?projectId=${safeProjectId}`);
+    pushCandidate(`/api/v1/polling/${safeProjectId}/status`);
+  }
+
+  return candidates;
+}
+
 function assertWubbleConfig(config) {
   if (!config.baseUrl || !config.apiKey) {
     throw new Error("Missing WUBBLE_API_BASE_URL or WUBBLE_API_KEY");
@@ -345,25 +374,37 @@ export async function pollGenerationStatus(requestId) {
   const config = getWubbleConfig();
   assertWubbleConfig(config);
 
-  const safeRequestId = encodeURIComponent(String(requestId || ""));
-  const pollEndpoint = config.pollEndpointTemplate.replace("{requestId}", safeRequestId);
-  const pollUrl = normalizeEndpoint(config.baseUrl, pollEndpoint);
+  const pollUrls = buildPollUrlCandidates(config, { requestId });
+  let response = null;
+  let lastError = null;
 
-  let response;
-  try {
-    response = await fetch(pollUrl, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`
-      }
-    });
-  } catch (error) {
-    throw new Error(`Wubble poll fetch failed: ${error.cause?.code || error.cause?.message || error.message}`);
+  for (const pollUrl of pollUrls) {
+    try {
+      response = await fetch(pollUrl, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`
+        }
+      });
+    } catch (error) {
+      lastError = error;
+      continue;
+    }
+
+    if (response.ok) {
+      break;
+    }
+
+    const message = await response.text();
+    if (response.status !== 404) {
+      throw new Error(`Wubble status failed: ${response.status} ${message}`);
+    }
+
+    lastError = new Error(`Wubble status failed: ${response.status} ${message}`);
   }
 
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(`Wubble status failed: ${response.status} ${message}`);
+  if (!response || !response.ok) {
+    throw new Error(lastError?.message || "Wubble poll fetch failed");
   }
 
   const statusPayload = await response.json();
