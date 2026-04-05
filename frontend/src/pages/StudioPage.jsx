@@ -18,17 +18,30 @@ const EMOTIONS = [
 
 export default function StudioPage() {
   const { state, dispatch, toast } = useStore();
+  const isAuthed = state.authStatus === 'authenticated';
   const [prompt, setPrompt] = useState('');
   const [emotion, setEmotion] = useState('');
   const [voiceFile, setVoiceFile] = useState(null);
   const [voiceErr, setVoiceErr] = useState('');
   const [promptErr, setPromptErr] = useState('');
+  const [authErr, setAuthErr] = useState('');
   const [instrumental, setInstrumental] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
   const { studioStatus, studioTrack, studioError } = state;
+
+  const openAuth = (tab = 'login') => {
+    navigate(`/auth?origin=studio&tab=${tab}`);
+  };
+
+  const requireAuth = () => {
+    const message = 'Login or sign up is required to generate and publish tracks.';
+    setAuthErr(message);
+    toast(message, 'error');
+    return false;
+  };
 
   // ── Voice file handling ────────────────────────────────────────────────
   const handleVoiceFile = (file) => {
@@ -47,8 +60,13 @@ export default function StudioPage() {
   // ── Generate ───────────────────────────────────────────────────────────
   const generate = async (e) => {
     e.preventDefault();
+    if (!isAuthed) {
+      requireAuth();
+      return;
+    }
     if (!prompt.trim()) { setPromptErr('Describe your sound first'); return; }
     setPromptErr('');
+    setAuthErr('');
     dispatch({ type: A.SET_STUDIO_STATUS, payload: 'loading' });
 
     try {
@@ -104,6 +122,10 @@ export default function StudioPage() {
   // ── Publish ────────────────────────────────────────────────────────────
   const publish = async () => {
     if (!studioTrack) return;
+    if (!isAuthed) {
+      requireAuth();
+      return;
+    }
     try {
       const res = await publicApi.publish({
         track: studioTrack,
@@ -135,7 +157,31 @@ export default function StudioPage() {
           <p className="page-eyebrow">AI Creation</p>
           <h2 className="page-title">Studio</h2>
         </div>
+        {isAuthed ? (
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/profile')}>My Profile</button>
+        ) : (
+          <div className="action-row">
+            <button className="btn btn-ghost btn-sm" onClick={() => openAuth('login')}>Log in</button>
+            <button className="btn btn-primary btn-sm" onClick={() => openAuth('signup')}>Sign up</button>
+          </div>
+        )}
       </div>
+
+      {!isAuthed && (
+        <div className="card studio-auth-banner" style={{ marginBottom: 20 }}>
+          <div>
+            <p className="page-eyebrow">Account required</p>
+            <h3 style={{ fontSize: 18, marginTop: 2 }}>Login or sign up to generate music</h3>
+            <p className="muted text-sm" style={{ marginTop: 6 }}>
+              You can explore Studio first, but track generation and publishing need an account.
+            </p>
+          </div>
+          <div className="action-row">
+            <button className="btn btn-ghost btn-sm" onClick={() => openAuth('login')}>Log in</button>
+            <button className="btn btn-primary btn-sm" onClick={() => openAuth('signup')}>Sign up</button>
+          </div>
+        </div>
+      )}
 
       <div className="studio-layout">
         {/* ── Left: Controls ── */}
@@ -230,7 +276,9 @@ export default function StudioPage() {
                 className="btn btn-primary"
                 disabled={studioStatus === 'loading'}
               >
-                {studioStatus === 'loading'
+                {!isAuthed
+                  ? 'Login required'
+                  : studioStatus === 'loading'
                   ? <><span className="spin" /> Generating…</>
                   : <>✦ Generate</>
                 }
@@ -239,6 +287,11 @@ export default function StudioPage() {
                 <button type="button" className="btn btn-ghost" onClick={reset}>Reset</button>
               )}
             </div>
+            {!isAuthed && (
+              <div className="muted text-xs" style={{ marginTop: -4 }}>
+                {authErr || 'Login or sign up to unlock generation.'}
+              </div>
+            )}
           </form>
         </div>
 
@@ -251,9 +304,18 @@ export default function StudioPage() {
           {/* Idle hint */}
           {studioStatus === 'idle' && (
             <div className="card card-sm" style={{ textAlign: 'center', padding: '28px 20px' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>🎹</div>
-              <p className="muted">Write a prompt above and press <strong style={{ color: 'var(--text)' }}>Generate</strong></p>
-              <p className="muted text-xs" style={{ marginTop: 6 }}>Add an emotion or voice reference for better results</p>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>{isAuthed ? '🎹' : '🔒'}</div>
+              {isAuthed ? (
+                <>
+                  <p className="muted">Write a prompt above and press <strong style={{ color: 'var(--text)' }}>Generate</strong></p>
+                  <p className="muted text-xs" style={{ marginTop: 6 }}>Add an emotion or voice reference for better results</p>
+                </>
+              ) : (
+                <>
+                  <p className="muted">Login or sign up to start generating tracks</p>
+                  <p className="muted text-xs" style={{ marginTop: 6 }}>You can still browse Studio and preview the layout first.</p>
+                </>
+              )}
             </div>
           )}
 

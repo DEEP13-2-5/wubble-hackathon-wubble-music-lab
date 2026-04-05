@@ -14,6 +14,11 @@ import TeamPage from './pages/TeamPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import CreatorProfilePage from './pages/CreatorProfilePage.jsx';
 import TeamProfilePage from './pages/TeamProfilePage.jsx';
+function clearSession(dispatch, toast) {
+  localStorage.removeItem('wubble_token');
+  dispatch({ type: A.LOGOUT });
+  toast('Logged out successfully', 'success');
+}
 
 // ── Page titles ─────────────────────────────────────────────────────────────
 const PAGE_TITLES = {
@@ -46,6 +51,9 @@ function Protected({ children }) {
 function AppShell({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { state, dispatch, toast } = useStore();
+  const navigate = useNavigate();
+  const isAuthed = state.authStatus === 'authenticated';
   const title = location.pathname.startsWith('/creator/')
     ? 'Creator Profile'
     : location.pathname.startsWith('/team-profile/')
@@ -87,7 +95,19 @@ function AppShell({ children }) {
           <div className="brand-mark" style={{ width: 28, height: 28, fontSize: 13, borderRadius: 8 }}>W</div>
           <span className="mobile-page-title">{title}</span>
         </div>
-        <div style={{ width: 34 }} />
+        <div className="mobile-topbar-actions">
+          {isAuthed ? (
+            <>
+              <button className="btn btn-ghost btn-xs mobile-action-btn" onClick={() => navigate('/profile')}>Profile</button>
+              <button className="btn btn-danger btn-xs mobile-action-btn" onClick={() => clearSession(dispatch, toast)}>Logout</button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-ghost btn-xs mobile-action-btn" onClick={() => navigate('/auth?origin=studio&tab=login')}>Log in</button>
+              <button className="btn btn-primary btn-xs mobile-action-btn" onClick={() => navigate('/auth?origin=studio&tab=signup')}>Sign up</button>
+            </>
+          )}
+        </div>
       </header>
 
       {/* Main content */}
@@ -104,7 +124,6 @@ function AppShell({ children }) {
 // ── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
   const { state, dispatch, toast } = useStore();
-  const navigate = useNavigate();
 
   // ── Session restore on mount ───────────────────────────────────────────
   useEffect(() => {
@@ -157,11 +176,13 @@ export default function App() {
             : <AuthPage />
         } />
 
+        {/* Public studio */}
+        <Route path="/studio" element={<AppShell><StudioPage /></AppShell>} />
+
         {/* Protected pages */}
         <Route path="/profile" element={<Protected><AppShell><ProfilePage /></AppShell></Protected>} />
         <Route path="/creator/:creatorId" element={<Protected><AppShell><CreatorProfilePage /></AppShell></Protected>} />
         <Route path="/team-profile/:teamName" element={<Protected><AppShell><TeamProfilePage /></AppShell></Protected>} />
-        <Route path="/studio"  element={<Protected><AppShell><StudioPage /></AppShell></Protected>} />
         <Route path="/dashboard" element={<Protected><AppShell><DashboardPage /></AppShell></Protected>} />
         <Route path="/team"    element={<Protected><AppShell><TeamPage /></AppShell></Protected>} />
 

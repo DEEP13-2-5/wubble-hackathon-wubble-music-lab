@@ -159,6 +159,12 @@ audio { width: 100%; }
   border-top: 1px solid var(--border-s);
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
+.sidebar-auth-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
 .user-chip {
   display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;
 }
@@ -186,6 +192,14 @@ audio { width: 100%; }
   background: rgba(11,5,24,0.9);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-s);
+}
+.mobile-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mobile-action-btn {
+  min-width: 0;
 }
 .mobile-page-title {
   font-family: 'Space Grotesk', sans-serif;
@@ -383,6 +397,14 @@ textarea.input { resize: vertical; min-height: 110px; }
 /* ═══════════ STUDIO PAGE ═══════════ */
 .studio-layout {
   display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;
+}
+.studio-auth-banner {
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(139,92,246,0.12), rgba(236,72,153,0.06));
 }
 .emotion-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .emotion-chip {

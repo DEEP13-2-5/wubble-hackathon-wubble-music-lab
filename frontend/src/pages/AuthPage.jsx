@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useStore, A } from '../lib/store.jsx';
 import { authApi } from '../lib/api.js';
 
@@ -20,7 +20,23 @@ export default function AuthPage() {
   const [formErr, setFormErr] = useState('');
   const [loading, setLoading] = useState(false);
   const { dispatch, toast } = useStore();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const origin = params.get('origin');
+    const requestedTab = location.state?.tab || params.get('tab');
+
+    if (origin !== 'studio') {
+      navigate('/studio', { replace: true });
+      return;
+    }
+
+    if (requestedTab === 'signup' || requestedTab === 'login') {
+      setTab(requestedTab);
+    }
+  }, [location.state, location.search, navigate]);
 
   const onChange = (f) => (e) => { setForm(p => ({ ...p, [f]: e.target.value })); setErrs(p => ({ ...p, [f]: '' })); setFormErr(''); };
 
