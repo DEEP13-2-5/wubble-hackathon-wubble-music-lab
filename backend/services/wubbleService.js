@@ -345,7 +345,8 @@ export async function pollGenerationStatus(requestId) {
   const config = getWubbleConfig();
   assertWubbleConfig(config);
 
-  const pollEndpoint = config.pollEndpointTemplate.replace("{requestId}", requestId);
+  const safeRequestId = encodeURIComponent(String(requestId || ""));
+  const pollEndpoint = config.pollEndpointTemplate.replace("{requestId}", safeRequestId);
   const pollUrl = normalizeEndpoint(config.baseUrl, pollEndpoint);
 
   let response;
