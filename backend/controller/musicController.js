@@ -1,5 +1,6 @@
 import {
   buildTrackResponse,
+  proxyAudioStream,
   pollGenerationStatus,
   submitGenerationRequest,
   uploadVoiceFileToWubble,
@@ -91,6 +92,19 @@ export async function uploadVoiceHandler(req, res) {
       mimeType: upload.mimeType,
       size: upload.size
     });
+  } catch (error) {
+    return res.status(502).json({ error: error.message });
+  }
+}
+
+export async function proxyAudioHandler(req, res) {
+  const { url } = req.query;
+  if (!url || typeof url !== "string") {
+    return res.status(400).json({ error: "url is required" });
+  }
+
+  try {
+    await proxyAudioStream(url, req, res);
   } catch (error) {
     return res.status(502).json({ error: error.message });
   }

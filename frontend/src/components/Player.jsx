@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore, A } from '../lib/store.jsx';
-import { fmtTime, clamp } from '../lib/utils.js';
+import { fmtTime, clamp, toPlayableAudioUrl } from '../lib/utils.js';
 
 export default function Player() {
   const { state, dispatch } = useStore();
@@ -16,8 +16,9 @@ export default function Player() {
     const audio = audioRef.current;
     if (!audio) return;
     if (!current) { audio.pause(); audio.src = ''; return; }
-    if (audio.src !== current.audioUrl) {
-      audio.src = current.audioUrl;
+    const playableUrl = toPlayableAudioUrl(current.audioUrl);
+    if (audio.src !== playableUrl) {
+      audio.src = playableUrl;
       audio.load();
     }
     if (isPlaying) audio.play().catch(() => {});
@@ -51,13 +52,19 @@ export default function Player() {
     const onLoadedMeta = () => {
       document.getElementById('player-duration').textContent = fmtTime(audio.duration);
     };
+    const onError = () => {
+      document.getElementById('player-duration').textContent = '0:00';
+      document.getElementById('player-current').textContent = '0:00';
+    };
     const onEnded = () => handleNext();
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('loadedmetadata', onLoadedMeta);
+    audio.addEventListener('error', onError);
     audio.addEventListener('ended', onEnded);
     return () => {
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('loadedmetadata', onLoadedMeta);
+      audio.removeEventListener('error', onError);
       audio.removeEventListener('ended', onEnded);
     };
   }, [playlist, currentIndex, isShuffle]);

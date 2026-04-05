@@ -76,3 +76,32 @@ function resolveSocketUrl() {
 }
 
 export const SOCKET_URL = resolveSocketUrl();
+
+function resolveApiBaseForAudioProxy() {
+  const envBase = import.meta.env.VITE_API_URL;
+  if (envBase && String(envBase).trim()) return envBase;
+
+  if (typeof window !== 'undefined' && /\.vercel\.app$/i.test(window.location.hostname)) {
+    return 'https://wubble-hackathon-wubble-music-lab-production.up.railway.app/api';
+  }
+
+  return '/api';
+}
+
+export function toPlayableAudioUrl(rawUrl) {
+  const url = String(rawUrl || '').trim();
+  if (!url) return '';
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+  if (url.startsWith('/')) return url;
+
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+      return parsed.toString();
+    }
+    const apiBase = resolveApiBaseForAudioProxy().replace(/\/$/, '');
+    return `${apiBase}/music/proxy-audio?url=${encodeURIComponent(parsed.toString())}`;
+  } catch {
+    return url;
+  }
+}

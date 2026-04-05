@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { Readable } from "stream";
 
 const EMOTION_PROMPT_PREFIX = {
   happy: "Create a joyful and uplifting track with bright energy.",
@@ -501,6 +502,55 @@ export async function waitForGenerationCompletion(requestId) {
     completed: false,
     ...(lastStatus || { requestId, status: "processing", audioUrls: [], raw: {} })
   };
+}
+
+export async function proxyAudioStream(rawUrl, req, res) {
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    throw new Error("Invalid audio URL");
+  }
+
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    throw new Error("Unsupported audio URL protocol");
+  }
+
+  const headers = {};
+  if (req.headers.range) {
+    headers.Range = req.headers.range;
+  }
+
+  const upstream = await fetch(parsedUrl.toString(), { headers });
+  if (!upstream.ok && upstream.status !== 206) {
+    const body = await upstream.text();
+    throw new Error(`Audio fetch failed: ${upstream.status} ${body}`);
+  }
+
+  res.status(upstream.status);
+  const contentType = upstream.headers.get('content-type');
+  const contentLength = upstream.headers.get('content-length');
+  const contentRange = upstream.headers.get('content-range');
+  const acceptRanges = upstream.headers.get('accept-ranges');
+
+  if (contentType) res.setHeader('Content-Type', contentType);
+  if (contentLength) res.setHeader('Content-Length', contentLength);
+  if (contentRange) res.setHeader('Content-Range', contentRange);
+  if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
+  res.setHeader('Cache-Control', 'public, max-age=300');
+
+  if (!upstream.body) {
+    res.end();
+    return;
+  }
+
+  const nodeStream = Readable.fromWeb(upstream.body);
+  await new Promise((resolve, reject) => {
+    nodeStream.on('error', reject);
+    res.on('error', reject);
+    res.on('close', resolve);
+    nodeStream.pipe(res);
+  });
 }
 
 export async function uploadVoiceFileToWubble(file) {
