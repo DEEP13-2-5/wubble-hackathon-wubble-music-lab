@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore, A } from '../lib/store.jsx';
 import { fmtTime, clamp, toPlayableAudioUrl } from '../lib/utils.js';
 
+let lastFailedAudioSrc = '';
+
 export default function Player() {
   const { state, dispatch, toast } = useStore();
   const { playlist, currentIndex, isPlaying, volume, isShuffle } = state;
@@ -20,11 +22,21 @@ export default function Player() {
     const playableUrl = toPlayableAudioUrl(current.audioUrl);
     audio.preload = 'metadata';
     if (audio.src !== playableUrl) {
+      lastFailedAudioSrc = '';
       audio.src = playableUrl;
       audio.load();
     }
+    if (lastFailedAudioSrc && lastFailedAudioSrc === playableUrl) {
+      audio.pause();
+      dispatch({ type: A.SET_IS_PLAYING, payload: false });
+      return;
+    }
     if (isPlaying) audio.play().catch((error) => {
-      toast(error?.message || 'Audio playback failed', 'error');
+      const nextMessage = error?.message || 'Audio playback failed';
+      if (lastFailedAudioSrc !== playableUrl) {
+        lastFailedAudioSrc = playableUrl;
+        toast(nextMessage, 'error');
+      }
       dispatch({ type: A.SET_IS_PLAYING, payload: false });
     });
     else audio.pause();
@@ -62,11 +74,12 @@ export default function Player() {
     };
     const onError = () => {
       const currentSrc = audio.currentSrc || audio.src || '';
-      if (currentSrc && lastErrorSrcRef.current === currentSrc) {
+      if (currentSrc && lastFailedAudioSrc === currentSrc) {
         dispatch({ type: A.SET_IS_PLAYING, payload: false });
         return;
       }
       lastErrorSrcRef.current = currentSrc;
+      lastFailedAudioSrc = currentSrc;
       const code = audio.error?.code;
       const message = code === 4
         ? 'Audio file could not be loaded. The generated audio URL is not reachable.'
