@@ -9,6 +9,13 @@ export default function ProfilePage() {
   const { user, token, feedTracks, teams } = state;
   const navigate = useNavigate();
 
+  const logout = () => {
+    localStorage.removeItem('wubble_token');
+    dispatch({ type: A.LOGOUT });
+    toast('Logged out successfully', 'success');
+    navigate('/studio', { replace: true });
+  };
+
   // My published tracks (from feed)
   const myTracks = feedTracks.filter(t => t.createdBy === (user?._id || user?.id));
   const playableTracks = myTracks
@@ -83,6 +90,7 @@ export default function ProfilePage() {
         <div className="profile-quick">
           <button className="btn btn-primary btn-sm" onClick={() => navigate('/studio')}>Open Studio</button>
           <button className="btn btn-ghost btn-sm" onClick={() => navigate('/team')}>My Teams</button>
+          <button className="btn btn-danger btn-sm" onClick={logout}>Logout</button>
         </div>
       </div>
 
