@@ -5,11 +5,10 @@ import { fmtTime, clamp, toPlayableAudioUrl } from '../lib/utils.js';
 let lastFailedAudioSrc = '';
 
 export default function Player() {
-  const { state, dispatch, toast } = useStore();
+  const { state, dispatch } = useStore();
   const { playlist, currentIndex, isPlaying, volume, isShuffle } = state;
   const audioRef = useRef(null);
   const seekRef = useRef(null);
-  const lastErrorSrcRef = useRef('');
   const [showLyrics, setShowLyrics] = useState(false);
 
   const current = playlist[currentIndex] || null;
@@ -31,27 +30,22 @@ export default function Player() {
       dispatch({ type: A.SET_IS_PLAYING, payload: false });
       return;
     }
-    if (isPlaying) audio.play().catch((error) => {
-      const nextMessage = error?.message || 'Audio playback failed';
-      if (lastFailedAudioSrc !== playableUrl) {
-        lastFailedAudioSrc = playableUrl;
-        toast(nextMessage, 'error');
-      }
+    if (isPlaying) audio.play().catch(() => {
+      lastFailedAudioSrc = playableUrl;
       dispatch({ type: A.SET_IS_PLAYING, payload: false });
     });
     else audio.pause();
-  }, [current, currentIndex, isPlaying, dispatch, toast]);
+  }, [current, currentIndex, isPlaying, dispatch]);
 
   // ── play/pause changes ─────────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !current) return;
-    if (isPlaying) audio.play().catch((error) => {
-      toast(error?.message || 'Audio playback failed', 'error');
+    if (isPlaying) audio.play().catch(() => {
       dispatch({ type: A.SET_IS_PLAYING, payload: false });
     });
     else audio.pause();
-  }, [isPlaying, current, dispatch, toast]);
+  }, [isPlaying, current, dispatch]);
 
   // ── volume ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -78,23 +72,12 @@ export default function Player() {
         dispatch({ type: A.SET_IS_PLAYING, payload: false });
         return;
       }
-      lastErrorSrcRef.current = currentSrc;
       lastFailedAudioSrc = currentSrc;
-      const code = audio.error?.code;
-      const message = code === 4
-        ? 'Audio file could not be loaded. The generated audio URL is not reachable.'
-        : code === 2
-          ? 'Network error while loading audio.'
-          : code === 3
-            ? 'Audio decoding failed.'
-            : 'Audio playback failed.';
-      toast(message, 'error');
       dispatch({ type: A.SET_IS_PLAYING, payload: false });
       document.getElementById('player-duration').textContent = '0:00';
       document.getElementById('player-current').textContent = '0:00';
     };
     const onEnded = () => handleNext();
-    lastErrorSrcRef.current = '';
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('loadedmetadata', onLoadedMeta);
     audio.addEventListener('error', onError);
