@@ -62,4 +62,17 @@ export function buildShareUrl(trackId) {
 export const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
 /** Socket URL */
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
+const RAILWAY_SOCKET_FALLBACK = 'https://wubble-hackathon-wubble-music-lab-production.up.railway.app';
+
+function resolveSocketUrl() {
+  const envUrl = import.meta.env.VITE_SOCKET_URL;
+  if (envUrl && String(envUrl).trim()) return envUrl;
+
+  if (typeof window !== 'undefined' && /\.vercel\.app$/i.test(window.location.hostname)) {
+    return RAILWAY_SOCKET_FALLBACK;
+  }
+
+  return '';
+}
+
+export const SOCKET_URL = resolveSocketUrl();

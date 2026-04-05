@@ -1,4 +1,17 @@
-const BASE = import.meta.env.VITE_API_URL || '/api';
+const RAILWAY_API_FALLBACK = 'https://wubble-hackathon-wubble-music-lab-production.up.railway.app/api';
+
+function resolveApiBase() {
+  const envBase = import.meta.env.VITE_API_URL;
+  if (envBase && String(envBase).trim()) return envBase;
+
+  if (typeof window !== 'undefined' && /\.vercel\.app$/i.test(window.location.hostname)) {
+    return RAILWAY_API_FALLBACK;
+  }
+
+  return '/api';
+}
+
+const BASE = resolveApiBase();
 
 /**
  * Core fetch wrapper — attaches auth header, parses JSON, throws on error.

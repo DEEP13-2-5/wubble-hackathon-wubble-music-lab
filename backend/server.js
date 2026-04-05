@@ -1,5 +1,6 @@
 import "dotenv/config";
 import path from "path";
+import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
@@ -36,6 +37,10 @@ app.use(express.json({ limit: "2mb" }));
 
 app.get("/api/health", (_req, res) => {
 	res.status(200).json({ ok: true, service: "music-app-backend" });
+});
+
+app.get("/", (_req, res) => {
+	res.status(200).send("Backend running");
 });
 
 app.use("/api/auth", authRoutes);
@@ -145,21 +150,22 @@ const __dirname = path.dirname(__filename);
 
 // In production serve from the React build output; in dev the Vite dev server handles it
 const frontendDir = path.join(__dirname, "../frontend/dist");
+const frontendIndexPath = path.join(frontendDir, "index.html");
+const hasFrontendBuild = existsSync(frontendIndexPath);
 
-app.use(express.static(frontendDir));
-app.get("*", (_req, res) => {
-	const indexPath = path.join(frontendDir, "index.html");
-	res.sendFile(indexPath, (err) => {
-		if (err) res.status(404).json({ error: "Frontend not built. Run: cd frontend && npm run build" });
+if (hasFrontendBuild) {
+	app.use(express.static(frontendDir));
+	app.get("*", (_req, res) => {
+		res.sendFile(frontendIndexPath);
 	});
-});
+}
 
-const port = Number(process.env.PORT || 4000);
+const PORT = Number(process.env.PORT || 4000);
 
 async function startServer() {
 	await connectDatabase();
-	httpServer.listen(port, () => {
-		console.log(`Backend running on http://localhost:${port}`);
+	httpServer.listen(PORT, () => {
+		console.log(`Server running on ${PORT}`);
 	});
 }
 
