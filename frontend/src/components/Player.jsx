@@ -7,6 +7,7 @@ export default function Player() {
   const { playlist, currentIndex, isPlaying, volume, isShuffle } = state;
   const audioRef = useRef(null);
   const seekRef = useRef(null);
+  const lastErrorSrcRef = useRef('');
   const [showLyrics, setShowLyrics] = useState(false);
 
   const current = playlist[currentIndex] || null;
@@ -60,6 +61,12 @@ export default function Player() {
       document.getElementById('player-duration').textContent = fmtTime(audio.duration);
     };
     const onError = () => {
+      const currentSrc = audio.currentSrc || audio.src || '';
+      if (currentSrc && lastErrorSrcRef.current === currentSrc) {
+        dispatch({ type: A.SET_IS_PLAYING, payload: false });
+        return;
+      }
+      lastErrorSrcRef.current = currentSrc;
       const code = audio.error?.code;
       const message = code === 4
         ? 'Audio file could not be loaded. The generated audio URL is not reachable.'
@@ -74,6 +81,7 @@ export default function Player() {
       document.getElementById('player-current').textContent = '0:00';
     };
     const onEnded = () => handleNext();
+    lastErrorSrcRef.current = '';
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('loadedmetadata', onLoadedMeta);
     audio.addEventListener('error', onError);

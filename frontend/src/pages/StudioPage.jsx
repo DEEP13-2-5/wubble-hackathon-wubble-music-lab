@@ -150,6 +150,13 @@ export default function StudioPage() {
     setPromptErr('');
   };
 
+  const logout = () => {
+    localStorage.removeItem('wubble_token');
+    dispatch({ type: A.LOGOUT });
+    toast('Logged out successfully', 'success');
+    navigate('/studio', { replace: true });
+  };
+
   return (
     <div>
       <div className="page-head">
@@ -158,7 +165,10 @@ export default function StudioPage() {
           <h2 className="page-title">Studio</h2>
         </div>
         {isAuthed ? (
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/profile')}>My Profile</button>
+          <div className="action-row">
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/profile')}>My Profile</button>
+            <button className="btn btn-danger btn-sm" onClick={logout}>Logout</button>
+          </div>
         ) : (
           <div className="action-row">
             <button className="btn btn-ghost btn-sm" onClick={() => openAuth('login')}>Log in</button>
